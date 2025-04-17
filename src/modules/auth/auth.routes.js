@@ -7,5 +7,5 @@ router.post("/check-otp", authController.checkOTP);
 router.post("/check-refresh-token", authController.checkRefreshToken);
 router.get("/logout", Authorization, authController.logout);
 module.exports = {
-    AuthRouter: router
+AuthRouter: router
 };
