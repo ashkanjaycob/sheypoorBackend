@@ -1,1 +1,1 @@
-# rjs-divar-api
+Anabri Platform Api
