@@ -8,7 +8,6 @@ async function sendOtpSms(mobile, code) {
       "https://console.melipayamak.com/api/send/otp/5b8834e7c4d34494a1834912285bd0d2",
       {
         to: mobile,
-        text: `کد ورود شما: ${code}`,
       },
       {
         headers: {
@@ -17,13 +16,11 @@ async function sendOtpSms(mobile, code) {
         },
       }
     );
+    console.log("[SMS] Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error(
-      "❌ خطا در ارسال پیامک:",
-      error.response?.data || error.message
-    );
-    throw new Error("ارسال پیامک ناموفق بود");
+    console.error("[SMS] Error:", error.response?.data || error.message);
+    throw new Error("SMS sending failed");
   }
 }
 
