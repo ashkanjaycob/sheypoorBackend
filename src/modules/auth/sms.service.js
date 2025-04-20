@@ -5,7 +5,7 @@ const MELI_TOKEN = process.env.MELI_TOKEN;
 async function sendOtpSms(mobile, code) {
   try {
     const response = await axios.post(
-      "https://console.melipayamak.com/api/send/otp/5b8834e7c4d34494a1834912285bd0d2",
+      "https://console.melipayamak.com/api/send/otp/f1f64d955e624d4486a180c50a29141b",
       {
         to: mobile,
       },
