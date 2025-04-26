@@ -1,8 +1,8 @@
 const AuthorizationMessage = Object.freeze({
-    Login: "login on your account",
-    LoginAgain: "please login again",
-    Unauthorized: "unauthorized please login on your account",
-    NotFoundAccount: "not found account",
-    InvalidToken: "token in invalid",
+  Login: "login on your account.",
+  LoginAgain: "Please Login Again .",
+  Unauthorized: "Unauthorized, Please login on your account.",
+  NotFoundAccount: "Account Not Founded !",
+  InvalidToken: "Token is Invalid !",
 });
-module.exports = AuthorizationMessage
+module.exports = AuthorizationMessage;

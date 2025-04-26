@@ -120,6 +120,18 @@ class AuthService {
   signToken(payload, expiresIn = "1y") {
     return jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn });
   }
+
+  // 6. پاک کردن توکن‌ها
+  async clearToken(userId) {
+    const user = await this.#model.findById(userId);
+    if (!user) throw new createHttpError.NotFound(AuthMessage.NotFound);
+
+    user.accessToken = undefined;
+    user.refreshToken = undefined;
+    await user.save();
+
+    return true;
+  }
 }
 
 module.exports = new AuthService();

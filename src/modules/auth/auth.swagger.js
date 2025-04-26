@@ -1,5 +1,15 @@
 /**
  * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+/**
+ * @swagger
  * tags:
  *  name: Auth
  *  description: Auth Module and Routes
@@ -37,7 +47,7 @@
 
 /**
  * @swagger
- * 
+ *
  * /auth/send-otp:
  *  post:
  *      summary: login with OTP in this end-point
@@ -57,7 +67,7 @@
  */
 /**
  * @swagger
- * 
+ *
  * /auth/check-otp:
  *  post:
  *      summary: check otp for login user
@@ -77,7 +87,7 @@
  */
 /**
  * @swagger
- * 
+ *
  * /auth/check-refresh-token:
  *  post:
  *      summary: check refreshToken for login user
@@ -94,4 +104,37 @@
  *      responses:
  *          200:
  *              description: success
+ */
+
+/**
+ * @swagger
+ *
+ * /auth/logout:
+ *  get:
+ *      summary: Logout user and clear tokens
+ *      tags:
+ *          -   Auth
+ *      security:
+ *          -   bearerAuth: []
+ *      responses:
+ *          200:
+ *              description: Successfully logged out
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              message:
+ *                                  type: string
+ *                                  example: logged out successfully
+ *          401:
+ *              description: Unauthorized
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              message:
+ *                                  type: string
+ *                                  example: login on your account
  */
