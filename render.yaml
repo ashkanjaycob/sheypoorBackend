@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sheypoor-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # مقدار واقعی را در داشبورد Render وارد کنید (sync: false یعنی در گیت ذخیره نشود)
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: COOKIE_SECRET_KEY
+        sync: false
+      - key: MAP_IR_URL
+        sync: false
+      - key: MAP_API_KEY
+        sync: false
+      - key: MELI_TOKEN
+        sync: false

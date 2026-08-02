@@ -30,7 +30,6 @@ class AuthController {
         mobile,
         code
       );
-      console.log(code);
 
       return res.status(200).json({
         message: AuthMessage.LoginSuccessfully,
@@ -61,7 +60,7 @@ class AuthController {
   // 4. خروج از حساب کاربری
   async logout(req, res, next) {
     try {
-      await this.#service.clearToken(req.user._id);
+      await this.#service.clearToken(req.user.id);
       return res.json({
         message: "logged out successfully",
       });

@@ -1,113 +1,176 @@
 const autoBind = require("auto-bind");
-const OptionModel = require("./option.model");
 const createHttpError = require("http-errors");
-const { OptionMessage } = require("./option.message");
+const { Op } = require("sequelize");
 const { default: slugify } = require("slugify");
+const { OptionModel, CategoryModel } = require("../../models");
+const { OptionMessage } = require("./option.message");
 const categoryService = require("../category/category.service");
 const { isTrue, isFalse } = require("../../common/utils/functions");
-const { isValidObjectId } = require("mongoose");
+const { isValidId, toId } = require("../../common/utils/validators");
+
+const CATEGORY_INCLUDE = {
+  model: CategoryModel,
+  as: "category",
+  attributes: ["id", "name", "slug"],
+};
 
 class OptionService {
-    #model;
-    #categoryService;
-    constructor(){
-        autoBind(this);
-        this.#model = OptionModel;
-        this.#categoryService = categoryService
+  #model;
+  #categoryService;
+  constructor() {
+    autoBind(this);
+    this.#model = OptionModel;
+    this.#categoryService = categoryService;
+  }
+
+  async find() {
+    return await this.#model.findAll({
+      include: [CATEGORY_INCLUDE],
+      order: [["id", "DESC"]],
+    });
+  }
+
+  async create(optionDto) {
+    const category = await this.#categoryService.checkExistById(
+      optionDto.category
+    );
+
+    if (!optionDto.key) {
+      throw new createHttpError.BadRequest("فیلد key الزامی است.");
     }
-    async find(){
-        const options = await this.#model.find({}, {__v: 0}, {sort: {_id: -1}}).populate([{path: "category", select: {name: 1, slug: 1}}]);
-        return options;
+
+    const key = slugify(optionDto.key, {
+      trim: true,
+      replacement: "_",
+      lower: true,
+    });
+
+    await this.alreadyExistByCategoryAndKey(key, category.id);
+
+    let list = optionDto.enum;
+    if (list && typeof list === "string") list = list.split(",");
+    else if (!Array.isArray(list)) list = [];
+
+    let required = false;
+    if (isTrue(optionDto?.required)) required = true;
+    if (isFalse(optionDto?.required)) required = false;
+
+    return await this.#model.create({
+      title: optionDto.title,
+      key,
+      type: optionDto.type,
+      enum: list,
+      guid: optionDto.guid,
+      required,
+      categoryId: category.id,
+    });
+  }
+
+  async update(id, optionDto) {
+    const existOption = await this.checkExistById(id);
+    const payload = {};
+
+    let categoryId = existOption.categoryId;
+    if (optionDto.category && isValidId(optionDto.category)) {
+      const category = await this.#categoryService.checkExistById(
+        optionDto.category
+      );
+      categoryId = category.id;
+      payload.categoryId = category.id;
     }
-    async create(optionDto) {
-        const category = await this.#categoryService.checkExistById(optionDto.category);
-        optionDto.category = category._id;
-        optionDto.key = slugify(optionDto.key, {trim: true, replacement: "_", lower: true});
-        await this.alreadyExistByCategoryAndKey(optionDto.key, category._id)
-        if(optionDto?.enum && typeof optionDto.enum === "string") {
-            optionDto.enum = optionDto.enum.split(",")
-        }else if(!Array.isArray(optionDto.enum)) optionDto.enum = [];
-        if(isTrue(optionDto?.required)) optionDto.required = true;
-        if(isFalse(optionDto?.required)) optionDto.required = false;
-        const option = await this.#model.create(optionDto);
-        return option;
+
+    if (optionDto.key) {
+      payload.key = slugify(optionDto.key, {
+        trim: true,
+        replacement: "_",
+        lower: true,
+      });
+      await this.alreadyExistByCategoryAndKey(
+        payload.key,
+        categoryId,
+        existOption.id
+      );
     }
-    async update(id, optionDto) {
-        const existOption = await this.checkExistById(id);
-        if(optionDto.category && isValidObjectId(optionDto.category)) {
-            const category = await this.#categoryService.checkExistById(optionDto.category);
-            optionDto.category = category._id;
-        } else {
-            delete optionDto.category
-        }
-        if(optionDto.slug) {
-            optionDto.key = slugify(optionDto.key, {trim: true, replacement: "_", lower: true});
-            let categoryId = existOption.category;
-            if(optionDto.category) categoryId = optionDto.category;
-            await this.alreadyExistByCategoryAndKey(optionDto.key, categoryId, id)
-        }
-        if(optionDto?.enum && typeof optionDto.enum === "string") {
-            optionDto.enum = optionDto.enum.split(",")
-        }else if(!Array.isArray(optionDto.enum)) delete optionDto.enum;
-        
-        if(isTrue(optionDto?.required)) optionDto.required = true;
-        else if(isFalse(optionDto?.required)) optionDto.required = false;
-        else delete optionDto?.required
-        return await this.#model.updateOne({_id: id}, {$set: optionDto})
+
+    if (optionDto?.enum && typeof optionDto.enum === "string") {
+      payload.enum = optionDto.enum.split(",");
+    } else if (Array.isArray(optionDto.enum)) {
+      payload.enum = optionDto.enum;
     }
-    async findById(id) {
-        return await this.checkExistById(id)
+
+    if (isTrue(optionDto?.required)) payload.required = true;
+    else if (isFalse(optionDto?.required)) payload.required = false;
+
+    if (optionDto.title) payload.title = optionDto.title;
+    if (optionDto.type) payload.type = optionDto.type;
+    if (optionDto.guid !== undefined) payload.guid = optionDto.guid;
+
+    return await this.#model.update(payload, { where: { id: existOption.id } });
+  }
+
+  async findById(id) {
+    return await this.checkExistById(id);
+  }
+
+  async removeById(id) {
+    const option = await this.checkExistById(id);
+    return await this.#model.destroy({ where: { id: option.id } });
+  }
+
+  async findByCategoryId(category) {
+    if (!isValidId(category)) {
+      throw new createHttpError.BadRequest(OptionMessage.NotFound);
     }
-    async removeById(id) {
-        await this.checkExistById(id);
-        return await this.#model.deleteOne({_id: id});
+    return await this.#model.findAll({
+      where: { categoryId: toId(category) },
+      include: [CATEGORY_INCLUDE],
+    });
+  }
+
+  async findByCategorySlug(slug) {
+    const options = await this.#model.findAll({
+      include: [
+        {
+          model: CategoryModel,
+          as: "category",
+          attributes: ["id", "name", "slug", "icon"],
+          where: { slug },
+          required: true,
+        },
+      ],
+    });
+
+    // خروجی مسطح، مطابق aggregate قبلی
+    return options.map((option) => {
+      const value = option.toJSON();
+      const category = value.category;
+      delete value.category;
+      return {
+        ...value,
+        categorySlug: category?.slug,
+        categoryName: category?.name,
+        categoryIcon: category?.icon,
+      };
+    });
+  }
+
+  async checkExistById(id) {
+    if (!isValidId(id)) {
+      throw new createHttpError.BadRequest(OptionMessage.NotFound);
     }
-    async findByCategoryId(category) {
-        return await this.#model.find({category}, {__v: 0}).populate([{path: "category", select: {name: 1, slug: 1}}]);
-    }
-    async findByCategorySlug(slug) {
-        const options = await this.#model.aggregate([
-            {
-                $lookup: {
-                    from: "categories",
-                    localField: "category",
-                    foreignField: "_id",
-                    as: "category"
-                }
-            },
-            {
-                $unwind: "$category"
-            },
-            {
-                $addFields: {
-                    categorySlug: "$category.slug",
-                    categoryName: "$category.name",
-                    categoryIcon: "$category.icon",
-                }
-            },
-            {
-                $project: {
-                    category: 0,
-                    __v: 0
-                }
-            },
-            {
-                $match: {
-                    categorySlug: slug
-                }
-            }
-        ]);
-        return options;
-    }
-    async checkExistById(id) {
-        const option = await this.#model.findById(id);
-        if(!option) throw new createHttpError.NotFound(OptionMessage.NotFound);
-        return option;
-    }
-    async alreadyExistByCategoryAndKey(key, category, exceptionId = null) {
-        const isExist = await this.#model.findOne({category, key , _id : {$ne : exceptionId}});
-        if(isExist) throw new createHttpError.Conflict(OptionMessage.AlreadyExist);
-        return null;
-    }
+    const option = await this.#model.findByPk(toId(id));
+    if (!option) throw new createHttpError.NotFound(OptionMessage.NotFound);
+    return option;
+  }
+
+  async alreadyExistByCategoryAndKey(key, categoryId, exceptionId = null) {
+    const where = { categoryId, key };
+    if (exceptionId) where.id = { [Op.ne]: exceptionId };
+
+    const isExist = await this.#model.findOne({ where });
+    if (isExist) throw new createHttpError.Conflict(OptionMessage.AlreadyExist);
+    return null;
+  }
 }
+
 module.exports = new OptionService();
