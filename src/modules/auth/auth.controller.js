@@ -13,9 +13,12 @@ class AuthController {
   async sendOTP(req, res, next) {
     try {
       const { mobile } = req.body;
-      await this.#service.sendOTP(mobile);
+      const result = await this.#service.sendOTP(mobile);
       return res.json({
         message: AuthMessage.SendOtpSuccessfully,
+        expiresIn: result.expiresIn,
+        // فقط وقتی پنل پیامک تنظیم نشده / حالت تست فعال است
+        ...(result.code ? { code: result.code } : {}),
       });
     } catch (error) {
       next(error);

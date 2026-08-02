@@ -44,15 +44,17 @@ class PostService {
     });
   }
 
-  async findAll(options = {}) {
-    const { category, search } = options;
+  /**
+   * ساخت شرط جستجو. اگر اسلاگ دسته‌بندی وجود نداشته باشد null برمی‌گرداند.
+   */
+  async buildFilter({ category, search } = {}) {
     const where = {};
 
     if (category) {
       const result = await this.#categoryModel.findOne({
         where: { slug: category },
       });
-      if (!result) return [];
+      if (!result) return null;
 
       // خود دسته + همه‌ی زیرشاخه‌ها در هر عمقی
       const descendants = await this.#ancestorModel.findAll({
@@ -72,7 +74,68 @@ class PostService {
       ];
     }
 
+    return where;
+  }
+
+  async findAll(options = {}) {
+    const where = await this.buildFilter(options);
+    if (where === null) return [];
     return await this.#model.findAll({ where, order: [["id", "DESC"]] });
+  }
+
+  /**
+   * لیست عمومی آگهی‌ها برای لندینگ فرانت — بدون احراز هویت، با صفحه‌بندی
+   * و اطلاعات دسته‌بندی هر آگهی.
+   */
+  async findPublic(query = {}) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+
+    const where = await this.buildFilter(query);
+    if (where === null) {
+      return {
+        posts: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      };
+    }
+
+    const { rows, count } = await this.#model.findAndCountAll({
+      where,
+      include: [
+        {
+          model: this.#categoryModel,
+          as: "categoryRef",
+          attributes: ["id", "name", "slug", "icon"],
+          required: false,
+        },
+      ],
+      order: [["id", "DESC"]],
+      limit,
+      offset: (page - 1) * limit,
+      distinct: true,
+    });
+
+    const posts = rows.map((row) => {
+      const value = row.toJSON();
+      const category = value.categoryRef;
+      delete value.categoryRef;
+      return {
+        ...value,
+        categoryName: category?.name ?? null,
+        categorySlug: category?.slug ?? null,
+        categoryIcon: category?.icon ?? null,
+      };
+    });
+
+    return {
+      posts,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   }
 
   async checkExist(postId) {

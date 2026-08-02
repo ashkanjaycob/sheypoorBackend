@@ -42,6 +42,21 @@ async function main() {
   NotFoundHandler(app);
   AllExceptionHandler(app);
 
+  const otpExposed =
+    process.env.OTP_DEBUG_RETURN !== undefined &&
+    process.env.OTP_DEBUG_RETURN !== ""
+      ? String(process.env.OTP_DEBUG_RETURN).toLowerCase() === "true"
+      : !process.env.MELI_TOKEN;
+
+  if (otpExposed) {
+    console.warn(
+      "⚠️  OTP در پاسخ API برگردانده می‌شود — هرکسی می‌تواند با هر شماره‌ای لاگین کند." +
+        (process.env.NODE_ENV === "production"
+          ? " این حالت در پروداکشن فعال است!"
+          : "")
+    );
+  }
+
   app.listen(port, () => {
     console.log(`🚀 Server is running at: http://localhost:${port}`);
   });

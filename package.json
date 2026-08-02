@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node main.js",
     "dev": "nodemon main.js",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "db:admin": "node scripts/create-admin.js"
   },
   "keywords": [],
   "author": "",

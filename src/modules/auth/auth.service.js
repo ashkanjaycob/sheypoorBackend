@@ -6,6 +6,20 @@ const { UserModel } = require("../../models");
 const { AuthMessage } = require("./auth.messages");
 const { sendOtpSms } = require("../auth/sms.service");
 
+/**
+ * آیا کد تایید در پاسخ API برگردانده شود؟
+ * - اگر OTP_DEBUG_RETURN صراحتا ست شده باشد، همان تعیین‌کننده است.
+ * - در غیر این صورت: وقتی سرویس پیامک تنظیم نشده، بدون برگرداندن کد
+ *   اصلا ورود به سیستم ممکن نیست، پس برگردانده می‌شود.
+ */
+const shouldExposeOtp = () => {
+  const flag = process.env.OTP_DEBUG_RETURN;
+  if (flag !== undefined && flag !== "") {
+    return String(flag).toLowerCase() === "true";
+  }
+  return !process.env.MELI_TOKEN;
+};
+
 class AuthService {
   #model;
   constructor() {
@@ -55,7 +69,12 @@ class AuthService {
       await user.save();
     }
 
-    return { message: "کد تایید ارسال شد." };
+    return {
+      message: "کد تایید ارسال شد.",
+      // در حالت MVP بدون پنل پیامک، کد مستقیما به فرانت برگردانده می‌شود
+      code: shouldExposeOtp() ? String(finalCode) : undefined,
+      expiresIn: otpExpiresIn,
+    };
   }
 
   // 2. بررسی و تایید کد
@@ -73,8 +92,9 @@ class AuthService {
 
     user.verifiedMobile = true;
 
-    const accessToken = this.signToken({ id: user.id, mobile }, "1d");
-    const refreshToken = this.signToken({ id: user.id, mobile }, "1y");
+    const payload = { id: user.id, mobile, role: user.role };
+    const accessToken = this.signToken(payload, "1d");
+    const refreshToken = this.signToken(payload, "1y");
 
     user.accessToken = accessToken;
     user.refreshToken = refreshToken;
@@ -109,14 +129,9 @@ class AuthService {
     const user = await this.#model.findByPk(data.id);
     if (!user) throw new createHttpError.Unauthorized("کاربر یافت نشد.");
 
-    const accessToken = this.signToken(
-      { id: user.id, mobile: user.mobile },
-      "1d"
-    );
-    const newRefreshToken = this.signToken(
-      { id: user.id, mobile: user.mobile },
-      "1y"
-    );
+    const payload = { id: user.id, mobile: user.mobile, role: user.role };
+    const accessToken = this.signToken(payload, "1d");
+    const newRefreshToken = this.signToken(payload, "1y");
 
     user.accessToken = accessToken;
     user.refreshToken = newRefreshToken;

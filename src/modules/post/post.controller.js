@@ -149,6 +149,20 @@ class PostController {
     }
   }
 
+  // لیست عمومی برای لندینگ — بدون نیاز به توکن
+  async publicList(req, res, next) {
+    try {
+      const { posts, pagination } = await this.#service.findPublic(req.query);
+      res.json({
+        posts,
+        count: posts.length,
+        pagination,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async postList(req, res, next) {
     try {
       const query = req.query;

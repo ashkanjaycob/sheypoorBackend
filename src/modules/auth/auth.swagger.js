@@ -51,8 +51,13 @@
  * /auth/send-otp:
  *  post:
  *      summary: login with OTP in this end-point
+ *      description: >
+ *          در حالت MVP که پنل پیامک تنظیم نشده (MELI_TOKEN خالی) یا
+ *          OTP_DEBUG_RETURN=true باشد، خود کد تایید در فیلد `code` برگردانده
+ *          می‌شود تا فرانت بتواند بدون ارسال پیامک تست لاگین انجام دهد.
  *      tags:
  *          -   Auth
+ *      security: []
  *      requestBody:
  *          content:
  *              application/x-www-form-urlencoded:
@@ -64,6 +69,24 @@
  *      responses:
  *          200:
  *              description: success
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              message:
+ *                                  type: string
+ *                                  example: OTP Sent Successfully.
+ *                              expiresIn:
+ *                                  type: integer
+ *                                  description: زمان انقضای کد (timestamp میلی‌ثانیه)
+ *                                  example: 1785669314511
+ *                              code:
+ *                                  type: string
+ *                                  description: فقط در حالت تست/بدون پنل پیامک
+ *                                  example: "67756"
+ *          400:
+ *              description: کد قبلی هنوز منقضی نشده
  */
 /**
  * @swagger
