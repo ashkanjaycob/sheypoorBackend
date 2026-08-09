@@ -257,6 +257,35 @@ class PostController {
         });
       }
 
+      // Fetch descriptions sequentially to avoid rate limiting
+      for (let i = 0; i < postsToScrape.length; i++) {
+        try {
+          const item = postsToScrape[i];
+          const postRes = await axios.get(item.originalUrl, {
+            timeout: 5000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+          });
+          const $post = cheerio.load(postRes.data);
+          let desc = "";
+          $post('p').each((_, p) => {
+            const t = $(p).text().trim();
+            if (t.length > desc.length) desc = t;
+          });
+          
+          if (desc) {
+             item.content = desc;
+          } else {
+             item.content = item.title;
+          }
+        } catch (e) {
+          console.error("Could not fetch description for", postsToScrape[i].originalUrl);
+          postsToScrape[i].content = postsToScrape[i].title;
+        }
+      }
+
+
       let scrapedCount = 0;
       for (const item of postsToScrape) {
         const images = item.image ? [item.image] : [];
