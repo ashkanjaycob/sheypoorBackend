@@ -1,5 +1,6 @@
 const autoBind = require("auto-bind");
 const createHttpError = require("http-errors");
+const axios = require("axios");
 const utf8 = require("utf8");
 const { PostMessage } = require("./post.message");
 const postService = require("./post.service");
@@ -172,6 +173,84 @@ class PostController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+  async scrapeDivar(req, res, next) {
+    try {
+      const { url, categoryId } = req.body;
+      if (!url || !categoryId) {
+        throw new createHttpError.BadRequest("URL and Category ID are required.");
+      }
+      
+      const userId = req.user.id; // Assigned to the admin requesting it
+
+      // Parse Divar URL (e.g. https://divar.ir/s/tehran/real-estate)
+      const urlParts = new URL(url).pathname.split('/');
+      // Usually pathname is /s/city/category
+      const citySegment = urlParts[2] || 'tehran';
+      const categorySegment = urlParts[3] || '';
+
+      const apiUrl = `https://api.divar.ir/v8/web-search/${citySegment}/${categorySegment}`;
+      const response = await axios.get(apiUrl);
+      
+      const widgets = response.data?.web_widgets?.post_list || [];
+      const postsToScrape = widgets.slice(0, 20);
+
+      let scrapedCount = 0;
+      for (const widget of postsToScrape) {
+        const item = widget.data;
+        if (!item || !item.title) continue;
+
+        // Basic fields
+        const title = item.title;
+        // Divar search results don't always give full description, use subtitle or empty
+        const content = item.description || item.subtitle || item.middle_description_text || "";
+        
+        // Try to parse price if available in middle_description_text
+        let amount = 0;
+        if (item.middle_description_text && item.middle_description_text.includes('تومان')) {
+           const numStr = item.middle_description_text.replace(/[^0-9]/g, '');
+           if (numStr) amount = Number(numStr);
+        }
+
+        const city = item.city || "تهران";
+        const district = item.district || "";
+        
+        // Images: Divar returns a thumbnail
+        const images = item.image ? [item.image] : [];
+        
+        // Put title and content into options to match how frontend expects them
+        const options = {
+          title,
+          content,
+          originalUrl: `https://divar.ir/v/${item.token}`
+        };
+
+        await this.#service.create({
+          userId,
+          title,
+          amount,
+          content,
+          lat: null,
+          lng: null,
+          categoryId,
+          images,
+          options,
+          address: "",
+          province: "",
+          city,
+          district,
+        });
+        
+        scrapedCount++;
+      }
+
+      return res.json({
+        message: `Successfully scraped and created ${scrapedCount} posts.`,
+      });
+    } catch (error) {
+      console.error("Scraping error:", error);
+      next(createHttpError.InternalServerError("Failed to scrape Divar. Please check the URL."));
     }
   }
 }

@@ -16,6 +16,7 @@ router.post(
 router.get("/my", Authorization, postController.findMyPosts);
 router.delete("/delete/:id", Authorization, postController.remove);
 router.get("/:id", postController.showPost);
+router.post("/scrape", Authorization, postController.scrapeDivar);
 module.exports = {
   PostRouter: router,
 };
