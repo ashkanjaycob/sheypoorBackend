@@ -3,6 +3,7 @@ const PostMessage = Object.freeze({
     NotFound: "آگهی یافت نشد",
     AlreadyExist: "آگهی تکراری میباشد",
     Deleted: "آگهی با موفقیت حذف شد",
+    Updated: "آگهی با موفقیت بروزرسانی شد",
     RequestNotValid: "درخواست شما صحیح نمیباشد",
 });
 module.exports = {

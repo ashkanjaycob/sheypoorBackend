@@ -166,6 +166,11 @@ class PostService {
     const post = await this.checkExist(postId);
     await this.#model.destroy({ where: { id: post.id } });
   }
+
+  async update(postId, dto) {
+    const post = await this.checkExist(postId);
+    await this.#model.update(dto, { where: { id: post.id } });
+  }
 }
 
 module.exports = new PostService();

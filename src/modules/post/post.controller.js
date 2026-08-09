@@ -139,6 +139,88 @@ class PostController {
     }
   }
 
+  async update(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const post = await this.#service.checkExist(id);
+      
+      if (post.userId !== userId) {
+        throw new createHttpError.Forbidden("شما مجاز به ویرایش این آگهی نیستید");
+      }
+
+      const images = req?.files?.map((image) => image?.path?.slice(7)) ?? [];
+      const {
+        title_post,
+        title,
+        description,
+        content,
+        lat,
+        lng,
+        category,
+        amount,
+      } = req.body;
+
+      const categoryId = category ? toId(category) : undefined;
+      if (category && !categoryId) {
+        throw new createHttpError.BadRequest(PostMessage.RequestNotValid);
+      }
+
+      const options = removePropertyInObject(req.body, [
+        "amount",
+        "title_post",
+        "title",
+        "description",
+        "content",
+        "lat",
+        "lng",
+        "category",
+        "images",
+      ]);
+      
+      for (let key in options) {
+        let value = options[key];
+        delete options[key];
+        key = utf8.decode(key);
+        options[key] = value;
+      }
+
+      const newTitle = title_post || title || post.title;
+      const newContent = description || content || post.content;
+      
+      if (title) options.title = title;
+      if (content) options.content = content;
+
+      let addressDetail = {};
+      if (lat && lng) {
+        addressDetail = await getAddressDetail(lat, lng);
+      }
+
+      const updatePayload = {
+        title: newTitle,
+        amount: amount !== undefined ? Number(amount) || 0 : post.amount,
+        content: newContent,
+        lat: lat || post.lat,
+        lng: lng || post.lng,
+        categoryId: categoryId || post.categoryId,
+        options: { ...post.options, ...options },
+        ...addressDetail,
+      };
+
+      if (images && images.length > 0) {
+        updatePayload.images = images;
+      }
+
+      await this.#service.update(id, updatePayload);
+
+      return res.json({
+        message: PostMessage.Updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async showPost(req, res, next) {
     try {
       const { id } = req.params;

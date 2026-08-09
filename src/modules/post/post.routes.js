@@ -15,6 +15,12 @@ router.post(
 );
 router.get("/my", Authorization, postController.findMyPosts);
 router.delete("/delete/:id", Authorization, postController.remove);
+router.put(
+  "/update/:id",
+  Authorization,
+  upload.array("images", 10),
+  postController.update
+);
 router.get("/:id", postController.showPost);
 router.post("/scrape", Authorization, postController.scrapeSheypoor);
 module.exports = {
