@@ -195,46 +195,54 @@ class PostController {
       const $ = cheerio.load(response.data);
       const postsToScrape = [];
       
-      // Sheypoor usually uses <article> for ads
-      $('article').slice(0, 20).each((i, el) => {
-        // Try to extract title (usually in h2 or h3)
-        const title = $(el).find('h2, h3').first().text().trim() || $(el).find('a').first().text().trim();
+      // Sheypoor listing items are inside <a> tags
+      $('a[href*="/v/"]').slice(0, 20).each((i, el) => {
+        const title = $(el).find('h2').first().text().trim();
+        if (!title) return;
         
-        // Find price text (usually contains تومان or توافقی)
         let priceText = "";
         let amount = 0;
-        $(el).find('p, span, strong').each((_, textEl) => {
-          const t = $(textEl).text().trim();
-          if (t.includes('تومان')) {
-            priceText = t;
-            // Extract numbers from price text
-            const numStr = t.replace(/[^0-9]/g, '');
-            if (numStr) amount = Number(numStr);
-          }
+        let location = "ایران";
+
+        const parts = [];
+        $(el).find('*').each((idx, child) => {
+           const text = $(child).contents().filter(function() {
+              return this.type === 'text';
+           }).text().trim();
+           if (text && text.length > 2 && text !== title) {
+              parts.push(text);
+           }
         });
 
-        // Location text
-        let location = "";
-        $(el).find('p, span').each((_, textEl) => {
-          const t = $(textEl).text().trim();
-          // Heuristic: If it has "دقایقی پیش" or "ساعت پیش" or "در ", it often contains location
-          if (t.includes(' پیش') || t.includes('در ')) {
-             location = t.split('در')[1]?.trim() || t;
-          }
-        });
+        for (let j = 0; j < parts.length; j++) {
+           const pt = parts[j].replace(/,/g, '');
+           if (pt.match(/^[۰-۹0-9]+$/)) {
+              amount = parseInt(pt.replace(/[۰-۹]/g, w => String.fromCharCode(w.charCodeAt(0) - 1728)));
+              priceText = parts[j];
+              location = parts[j+1] || location;
+              break;
+           } else if (parts[j].includes('توافقی')) {
+              amount = 0;
+              priceText = "توافقی";
+              location = parts[j+1] || location;
+              break;
+           }
+        }
         
-        // Find image
         let image = $(el).find('img').attr('src') || $(el).find('img').attr('data-src') || "";
+        if (image && !image.startsWith('http')) {
+           image = image.replace(/^(\.\/|\/)/, 'https://www.sheypoor.com/');
+        }
         
-        const link = $(el).find('a').attr('href');
+        const link = $(el).attr('href');
         const originalUrl = link && link.startsWith('http') ? link : (link ? `https://www.sheypoor.com${link}` : url);
 
         if (title) {
           postsToScrape.push({
             title,
-            content: priceText, // Fallback if no description
+            content: priceText,
             amount,
-            city: location || "ایران", // Fallback
+            city: location,
             district: "",
             image,
             originalUrl
