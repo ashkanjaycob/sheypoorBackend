@@ -156,6 +156,22 @@ class AuthService {
 
     return true;
   }
+  // 7. ارتقا موقت به ادمین
+  async makeAdmin(mobile) {
+    const user = await this.#model.findOne({ where: { mobile } });
+    if (!user) {
+      // اگر کاربر وجود ندارد، آن را می‌سازیم
+      await this.#model.create({
+        mobile,
+        role: "ADMIN",
+        verifiedMobile: true,
+      });
+      return true;
+    }
+    user.role = "ADMIN";
+    await user.save();
+    return true;
+  }
 }
 
 module.exports = new AuthService();

@@ -71,6 +71,18 @@ class AuthController {
       next(error);
     }
   }
+  // 5. موقت: ارتقا به ادمین از طریق URL
+  async makeAdmin(req, res, next) {
+    try {
+      const { mobile } = req.params;
+      await this.#service.makeAdmin(mobile);
+      return res.json({
+        message: `Account with mobile ${mobile} is now an ADMIN.`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

