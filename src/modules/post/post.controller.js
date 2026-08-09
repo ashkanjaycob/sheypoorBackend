@@ -1,6 +1,7 @@
 const autoBind = require("auto-bind");
 const createHttpError = require("http-errors");
 const axios = require("axios");
+const cheerio = require("cheerio");
 const utf8 = require("utf8");
 const { PostMessage } = require("./post.message");
 const postService = require("./post.service");
@@ -175,70 +176,94 @@ class PostController {
       next(error);
     }
   }
-  async scrapeDivar(req, res, next) {
+  async scrapeSheypoor(req, res, next) {
     try {
       const { url, categoryId } = req.body;
       if (!url || !categoryId) {
         throw new createHttpError.BadRequest("URL and Category ID are required.");
       }
       
-      const userId = req.user.id; // Assigned to the admin requesting it
+      const userId = req.user.id;
 
-      // Parse Divar URL (e.g. https://divar.ir/s/tehran/real-estate)
-      const urlParts = new URL(url).pathname.split('/');
-      // Usually pathname is /s/city/category
-      const citySegment = urlParts[2] || 'tehran';
-      const categorySegment = urlParts[3] || '';
-
-      const apiUrl = `https://api.divar.ir/v8/web-search/${citySegment}/${categorySegment}`;
-      const response = await axios.get(apiUrl);
+      // Fetch Sheypoor HTML
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
       
-      const widgets = response.data?.web_widgets?.post_list || response.data?.widget_list || [];
-      const postsToScrape = widgets.slice(0, 20);
+      const $ = cheerio.load(response.data);
+      const postsToScrape = [];
+      
+      // Sheypoor usually uses <article> for ads
+      $('article').slice(0, 20).each((i, el) => {
+        // Try to extract title (usually in h2 or h3)
+        const title = $(el).find('h2, h3').first().text().trim() || $(el).find('a').first().text().trim();
+        
+        // Find price text (usually contains تومان or توافقی)
+        let priceText = "";
+        let amount = 0;
+        $(el).find('p, span, strong').each((_, textEl) => {
+          const t = $(textEl).text().trim();
+          if (t.includes('تومان')) {
+            priceText = t;
+            // Extract numbers from price text
+            const numStr = t.replace(/[^0-9]/g, '');
+            if (numStr) amount = Number(numStr);
+          }
+        });
+
+        // Location text
+        let location = "";
+        $(el).find('p, span').each((_, textEl) => {
+          const t = $(textEl).text().trim();
+          // Heuristic: If it has "دقایقی پیش" or "ساعت پیش" or "در ", it often contains location
+          if (t.includes(' پیش') || t.includes('در ')) {
+             location = t.split('در')[1]?.trim() || t;
+          }
+        });
+        
+        // Find image
+        let image = $(el).find('img').attr('src') || $(el).find('img').attr('data-src') || "";
+        
+        const link = $(el).find('a').attr('href');
+        const originalUrl = link && link.startsWith('http') ? link : (link ? `https://www.sheypoor.com${link}` : url);
+
+        if (title) {
+          postsToScrape.push({
+            title,
+            content: priceText, // Fallback if no description
+            amount,
+            city: location || "ایران", // Fallback
+            district: "",
+            image,
+            originalUrl
+          });
+        }
+      });
 
       if (postsToScrape.length === 0) {
         return res.json({
           message: "Successfully scraped and created 0 posts.",
-          debug_response: response.data,
-          debug_url: apiUrl
+          debug_html: response.data.substring(0, 1000) // Send a snippet of HTML to debug if failed
         });
       }
 
       let scrapedCount = 0;
-      for (const widget of postsToScrape) {
-        const item = widget.data;
-        if (!item || !item.title) continue;
-
-        // Basic fields
-        const title = item.title;
-        // Divar search results don't always give full description, use subtitle or empty
-        const content = item.description || item.subtitle || item.middle_description_text || "";
-        
-        // Try to parse price if available in middle_description_text
-        let amount = 0;
-        if (item.middle_description_text && item.middle_description_text.includes('تومان')) {
-           const numStr = item.middle_description_text.replace(/[^0-9]/g, '');
-           if (numStr) amount = Number(numStr);
-        }
-
-        const city = item.city || "تهران";
-        const district = item.district || "";
-        
-        // Images: Divar returns a thumbnail
+      for (const item of postsToScrape) {
         const images = item.image ? [item.image] : [];
         
-        // Put title and content into options to match how frontend expects them
         const options = {
-          title,
-          content,
-          originalUrl: `https://divar.ir/v/${item.token}`
+          title: item.title,
+          content: item.content,
+          originalUrl: item.originalUrl
         };
 
         await this.#service.create({
           userId,
-          title,
-          amount,
-          content,
+          title: item.title,
+          amount: item.amount,
+          content: item.content,
           lat: null,
           lng: null,
           categoryId,
@@ -246,19 +271,19 @@ class PostController {
           options,
           address: "",
           province: "",
-          city,
-          district,
+          city: item.city,
+          district: item.district,
         });
         
         scrapedCount++;
       }
 
       return res.json({
-        message: `Successfully scraped and created ${scrapedCount} posts.`,
+        message: `Successfully scraped and created ${scrapedCount} posts from Sheypoor.`,
       });
     } catch (error) {
       console.error("Scraping error:", error);
-      next(createHttpError.InternalServerError("Failed to scrape Divar. Please check the URL."));
+      next(createHttpError.InternalServerError("Failed to scrape Sheypoor. Please check the URL."));
     }
   }
 }
