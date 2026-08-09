@@ -9,15 +9,11 @@ async function sendOtpSms(mobile, code) {
   // وگرنه اگر dotenv هنوز اجرا نشده باشد مقدار undefined می‌ماند.
   const meliToken = process.env.MELI_TOKEN;
 
-  // در محیط توسعه اگر توکن پیامک ست نشده باشد، کد را فقط لاگ می‌کنیم
   if (!meliToken) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(
-        `[SMS] MELI_TOKEN تعریف نشده — حالت توسعه. کد برای ${mobile}: ${code}`
-      );
-      return { code: String(code) };
-    }
-    throw new Error("MELI_TOKEN is not configured");
+    console.warn(
+      `[SMS] MELI_TOKEN is not configured. Returning code for testing. Code for ${mobile}: ${code}`
+    );
+    return { code: String(code) };
   }
 
   try {
