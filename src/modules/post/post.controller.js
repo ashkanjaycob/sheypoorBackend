@@ -193,8 +193,16 @@ class PostController {
       const apiUrl = `https://api.divar.ir/v8/web-search/${citySegment}/${categorySegment}`;
       const response = await axios.get(apiUrl);
       
-      const widgets = response.data?.web_widgets?.post_list || [];
+      const widgets = response.data?.web_widgets?.post_list || response.data?.widget_list || [];
       const postsToScrape = widgets.slice(0, 20);
+
+      if (postsToScrape.length === 0) {
+        return res.json({
+          message: "Successfully scraped and created 0 posts.",
+          debug_response: response.data,
+          debug_url: apiUrl
+        });
+      }
 
       let scrapedCount = 0;
       for (const widget of postsToScrape) {
