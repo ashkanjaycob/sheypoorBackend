@@ -1,18 +1,8 @@
 /**
  * @swagger
- * components:
- *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- */
-
-/**
- * @swagger
  * tags:
  *  name: Auth
- *  description: Auth Module and Routes
+ *  description: Authentication and Authorization Module
  */
 
 /**
@@ -26,6 +16,8 @@
  *              properties:
  *                  mobile:
  *                      type: string
+ *                      description: User Iranian mobile phone number (e.g. 09121234567)
+ *                      example: "09121234567"
  *          CheckOTP:
  *              type: object
  *              required:
@@ -34,8 +26,12 @@
  *              properties:
  *                  mobile:
  *                      type: string
+ *                      description: User Iranian mobile phone number
+ *                      example: "09121234567"
  *                  code:
  *                      type: string
+ *                      description: 5-digit verification OTP code
+ *                      example: "12345"
  *          CheckRefreshToken:
  *              type: object
  *              required:
@@ -43,6 +39,8 @@
  *              properties:
  *                  refreshToken:
  *                      type: string
+ *                      description: Valid JWT refresh token
+ *                      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  */
 
 /**
@@ -50,11 +48,11 @@
  *
  * /auth/send-otp:
  *  post:
- *      summary: login with OTP in this end-point
+ *      summary: Request One-Time Password (OTP)
  *      description: >
- *          در حالت MVP که پنل پیامک تنظیم نشده (MELI_TOKEN خالی) یا
- *          OTP_DEBUG_RETURN=true باشد، خود کد تایید در فیلد `code` برگردانده
- *          می‌شود تا فرانت بتواند بدون ارسال پیامک تست لاگین انجام دهد.
+ *          Sends a 5-digit OTP verification code to the provided mobile number.
+ *          In development / MVP mode (when MELI_TOKEN is not set or OTP_DEBUG_RETURN=true),
+ *          the OTP code is returned directly in the response `code` field to facilitate testing without an active SMS panel.
  *      tags:
  *          -   Auth
  *      security: []
@@ -68,7 +66,7 @@
  *                      $ref: '#/components/schemas/SendOTP'
  *      responses:
  *          200:
- *              description: success
+ *              description: OTP code sent successfully
  *              content:
  *                  application/json:
  *                      schema:
@@ -79,23 +77,26 @@
  *                                  example: OTP Sent Successfully.
  *                              expiresIn:
  *                                  type: integer
- *                                  description: زمان انقضای کد (timestamp میلی‌ثانیه)
+ *                                  description: Code expiration timestamp (milliseconds)
  *                                  example: 1785669314511
  *                              code:
  *                                  type: string
- *                                  description: فقط در حالت تست/بدون پنل پیامک
+ *                                  description: Present only in debug mode / when SMS panel is not configured
  *                                  example: "67756"
  *          400:
- *              description: کد قبلی هنوز منقضی نشده
+ *              description: Previous OTP code has not expired yet or invalid mobile number
  */
+
 /**
  * @swagger
  *
  * /auth/check-otp:
  *  post:
- *      summary: check otp for login user
+ *      summary: Verify OTP code and authenticate user
+ *      description: Validates the OTP code for the given mobile number. On success, returns JWT access and refresh tokens.
  *      tags:
  *          -   Auth
+ *      security: []
  *      requestBody:
  *          content:
  *              application/x-www-form-urlencoded:
@@ -106,16 +107,39 @@
  *                      $ref: '#/components/schemas/CheckOTP'
  *      responses:
  *          200:
- *              description: success
+ *              description: User authenticated successfully
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              message:
+ *                                  type: string
+ *                                  example: You're Logged In Successfully , Welcome .
+ *                              accessToken:
+ *                                  type: string
+ *                                  description: JWT access token
+ *                                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                              refreshToken:
+ *                                  type: string
+ *                                  description: JWT refresh token
+ *                                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *          400:
+ *              description: OTP code is invalid or expired
+ *          404:
+ *              description: User not found
  */
+
 /**
  * @swagger
  *
  * /auth/check-refresh-token:
  *  post:
- *      summary: check refreshToken for login user
+ *      summary: Refresh authentication tokens
+ *      description: Validates the refresh token and issues a new pair of access and refresh tokens.
  *      tags:
  *          -   Auth
+ *      security: []
  *      requestBody:
  *          content:
  *              application/x-www-form-urlencoded:
@@ -126,7 +150,20 @@
  *                      $ref: '#/components/schemas/CheckRefreshToken'
  *      responses:
  *          200:
- *              description: success
+ *              description: Tokens refreshed successfully
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              accessToken:
+ *                                  type: string
+ *                                  description: New JWT access token
+ *                              refreshToken:
+ *                                  type: string
+ *                                  description: New JWT refresh token
+ *          401:
+ *              description: Invalid or expired refresh token
  */
 
 /**
@@ -134,11 +171,11 @@
  *
  * /auth/logout:
  *  get:
- *      summary: Logout user and clear tokens
+ *      summary: Log out user and clear authentication cookies
  *      tags:
  *          -   Auth
  *      security:
- *          -   bearerAuth: []
+ *          -   BearerAuth: []
  *      responses:
  *          200:
  *              description: Successfully logged out
@@ -149,9 +186,9 @@
  *                          properties:
  *                              message:
  *                                  type: string
- *                                  example: logged out successfully
+ *                                  example: Successfully Logged Out, Back Here Again .
  *          401:
- *              description: Unauthorized
+ *              description: Unauthorized - Valid JWT Bearer token required
  *              content:
  *                  application/json:
  *                      schema:
@@ -159,5 +196,5 @@
  *                          properties:
  *                              message:
  *                                  type: string
- *                                  example: login on your account
+ *                                  example: login on your account.
  */

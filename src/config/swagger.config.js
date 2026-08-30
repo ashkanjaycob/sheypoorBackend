@@ -5,8 +5,8 @@ function SwaggerConfig(app) {
     swaggerDefinition: {
       openapi: "3.0.1",
       info: {
-        title: "sheypoor-backend",
-        description: "sheypoor clone backend by Ashkan Yaghoobi",
+        title: "Sheypoor Platform API",
+        description: "RESTful API documentation for the Sheypoor classifieds platform backend service",
         version: "1.0.0",
       },
       components: {
