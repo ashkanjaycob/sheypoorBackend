@@ -10,9 +10,14 @@ const SwaggerConfig = require("./src/config/swagger.config");
 const mainRouter = require("./src/app.routes");
 const NotFoundHandler = require("./src/common/exception/not-found.handler");
 const AllExceptionHandler = require("./src/common/exception/all-exception.handler");
+const { globalRateLimiter } = require("./src/config/rate-limit.config");
 
 async function main() {
   const app = express();
+
+  // Render از Load Balancer داخلی استفاده می‌کند — بدون این تنظیم IP تمام
+  // کاربران یکسان دیده شده و یک لیمیت برای همه اعمال می‌شود.
+  app.set("trust proxy", 1);
 
   // پورت دیفالت در صورت نبود .env (Render مقدار PORT را خودش ست می‌کند)
   const port = process.env.PORT || 3405;
@@ -25,6 +30,9 @@ async function main() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static("public"));
+
+  // لیمیتر سراسری — قبل از روت‌ها اعمال می‌شود (swagger و health مستثنی)
+  app.use(globalRateLimiter);
 
   app.use((req, res, next) => {
     console.log(`\n🔔 ${req.method} ${req.originalUrl}`);

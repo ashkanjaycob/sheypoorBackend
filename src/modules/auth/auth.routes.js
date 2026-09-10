@@ -1,10 +1,11 @@
 const { Router } = require("express");
 const authController = require("./auth.controller");
 const Authorization = require("../../common/guard/authorization.guard");
+const { otpSendLimiter, otpCheckLimiter } = require("../../config/rate-limit.config");
 const router = Router();
 
-router.post("/send-otp", authController.sendOTP);
-router.post("/check-otp", authController.checkOTP);
+router.post("/send-otp", otpSendLimiter, authController.sendOTP);
+router.post("/check-otp", otpCheckLimiter, authController.checkOTP);
 router.post("/check-refresh-token", authController.checkRefreshToken);
 router.get("/logout", Authorization, authController.logout);
 

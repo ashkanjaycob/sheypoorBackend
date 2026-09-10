@@ -2,6 +2,7 @@ const { Router } = require("express");
 const postController = require("./post.controller");
 const { upload } = require("../../common/utils/multer");
 const Authorization = require("../../common/guard/authorization.guard");
+const { postCreateLimiter } = require("../../config/rate-limit.config");
 
 const router = Router();
 // لیست عمومی آگهی‌ها برای لندینگ فرانت — بدون احراز هویت
@@ -10,6 +11,7 @@ router.get("/create", Authorization, postController.createPostPage);
 router.post(
   "/create",
   Authorization,
+  postCreateLimiter,
   upload.array("images", 10),
   postController.create
 );
@@ -22,7 +24,7 @@ router.put(
   postController.update
 );
 router.get("/:id", postController.showPost);
-router.post("/scrape", Authorization, postController.scrapeSheypoor);
+router.post("/scrape", Authorization, postCreateLimiter, postController.scrapeSheypoor);
 module.exports = {
   PostRouter: router,
 };

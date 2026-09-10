@@ -54,4 +54,20 @@
  *                          $ref: '#/components/schemas/UserProfile'
  *          401:
  *              description: Unauthorized - Missing or invalid token
+ *          429:
+ *              description: Too many requests — max 60 per minute per user
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              statusCode:
+ *                                  type: integer
+ *                                  example: 429
+ *                              message:
+ *                                  type: string
+ *                                  example: "تعداد درخواست‌های پروفایل بیش از حد مجاز است. لطفاً کمی صبر کنید."
+ *                              retryAfterSeconds:
+ *                                  type: integer
+ *                                  example: 60
  */
