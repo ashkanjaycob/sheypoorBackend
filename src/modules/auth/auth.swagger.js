@@ -85,6 +85,22 @@
  *                                  example: "67756"
  *          400:
  *              description: Previous OTP code has not expired yet or invalid mobile number
+ *          429:
+ *              description: Too many OTP requests — max 3 per 2 minutes per IP+mobile
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              statusCode:
+ *                                  type: integer
+ *                                  example: 429
+ *                              message:
+ *                                  type: string
+ *                                  example: "تعداد درخواست ارسال کد تایید بیش از حد مجاز است. لطفاً چند دقیقه صبر کنید."
+ *                              retryAfterSeconds:
+ *                                  type: integer
+ *                                  example: 120
  */
 
 /**
@@ -128,6 +144,22 @@
  *              description: OTP code is invalid or expired
  *          404:
  *              description: User not found
+ *          429:
+ *              description: Too many OTP check attempts — max 5 per 5 minutes per IP+mobile
+ *              content:
+ *                  application/json:
+ *                      schema:
+ *                          type: object
+ *                          properties:
+ *                              statusCode:
+ *                                  type: integer
+ *                                  example: 429
+ *                              message:
+ *                                  type: string
+ *                                  example: "تعداد تلاش‌های بررسی کد تایید بیش از حد مجاز است. لطفاً چند دقیقه صبر کنید."
+ *                              retryAfterSeconds:
+ *                                  type: integer
+ *                                  example: 300
  */
 
 /**

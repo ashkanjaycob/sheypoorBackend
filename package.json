@@ -10,7 +10,9 @@
     "start": "node main.js",
     "dev": "nodemon main.js",
     "db:seed": "node scripts/seed.js",
-    "db:admin": "node scripts/create-admin.js"
+    "db:admin": "node scripts/create-admin.js",
+    "test:ratelimit": "node scripts/test-rate-limit.js",
+    "test": "jest --verbose --forceExit"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +26,7 @@
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.7.0",
     "http-codes": "^1.0.0",
     "http-errors": "^2.0.0",
     "jalali-moment": "^3.3.11",
@@ -37,6 +40,8 @@
     "utf8": "^3.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^30.5.1",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   }
 }
